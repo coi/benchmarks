@@ -1,6 +1,15 @@
-# Benchmarks
+<div align="center">
+	<img src="images/logo.svg" alt="Coi Benchmarks Logo" width="220"/>
 
-This repository hosts benchmark suites for Coi and related ecosystem performance tracking.
+# Coi Benchmarks
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+
+Benchmark suites for Coi and related ecosystem performance tracking.
+
+</div>
 
 ## Goals
 
