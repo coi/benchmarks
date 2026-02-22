@@ -1,0 +1,28 @@
+# Node.js dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+**/dist/
+
+# Python cache/virtual env
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Playwright/browser artifacts
+.playwright/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/editor noise
+.DS_Store
+.vscode/
+.idea/
