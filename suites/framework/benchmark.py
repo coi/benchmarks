@@ -394,16 +394,20 @@ def print_dom_results(results: dict):
 # ---- the chart -----------------------------------------------------------------------------
 
 def framework_marks() -> str:
-    """<symbol>s for the four marks: the koi from the repository's logo, an atom, the V, an S."""
-    paths = ''
+    """<symbol>s for the four marks: Coi's logo (the koi), an atom, the V, an S."""
+    koi = ''
     logo = os.path.join(BENCHMARK_DIR, '..', '..', 'images', 'logo.svg')
     if os.path.exists(logo):
         import re
         with open(logo) as f:
-            # the koi is the logo's paths; its rects are a small bar chart of their own
-            paths = ''.join(re.findall(r'<path [^>]*/>', f.read()))
+            # the logo without its frame: the four rects are a small bar chart of its own, and the
+            # drop-shadow filters would need the logo's defs
+            koi = re.sub(r'^.*?<svg[^>]*>|</svg>\s*$', '', f.read(), flags=re.S)
+            koi = re.sub(r'<defs>.*?</defs>', '', koi, flags=re.S)
+            koi = re.sub(r'<rect [^>]*/>', '', koi)
+            koi = re.sub(r' filter="[^"]*"', '', koi)
     marks = [
-        f'<symbol id="m-coi" viewBox="15 0 163 108">{paths}</symbol>',
+        f'<symbol id="m-coi" viewBox="15 0 163 108">{koi}</symbol>',
         '<symbol id="m-react" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="#00d8ff"/>'
         + ''.join(f'<ellipse cx="12" cy="12" rx="10.5" ry="4" fill="none" stroke="#00d8ff" stroke-width="1.3" transform="rotate({a} 12 12)"/>' for a in (0, 60, 120))
         + '</symbol>',
