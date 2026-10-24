@@ -23,6 +23,7 @@ Benchmark suites for Coi and related ecosystem performance tracking.
 ./run.sh                      # Runs default suite: framework
 ./run.sh framework            # Runs framework suite explicitly
 ./run.sh framework --dom-only # Pass suite-specific options through
+./run.sh framework --report-only # Redraw the report from the last results
 ```
 
 ## Current Suites

@@ -39,6 +39,10 @@ DOM_BENCHMARKS = [
 
 WARMUP_RUNS = 5
 BENCHMARK_RUNS = 5
+# the frameworks take turns: a cycle opens each one on a fresh page, warms it up and measures,
+# and the cycles repeat, so neither the order nor a slow spell of the machine decides a result;
+# the number reported is the median of every sample
+CYCLES = 3
 
 COLORS = {"coi": "#9477ff", "react": "#00d8ff", "vue": "#42b883", "svelte": "#e97d30"}
 
@@ -147,38 +151,59 @@ def measure_bundle_sizes() -> dict:
     return sizes
 
 
-async def run_dom_benchmark(page, button_id: str) -> float:
-    """Run a single DOM benchmark operation using double-rAF timing (same as Svelte)."""
-    result = await page.evaluate(r'''(buttonId) => {
-        return new Promise((resolve) => {
-            const button = document.getElementById(buttonId);
-            if (!button) {
-                resolve(-1);
-                return;
+async def click_settled(page, button_id: str):
+    """A click and the frame after it, nothing timed: warm-ups and the steps between measurements."""
+    await page.evaluate(r'''(buttonId) => new Promise((resolve) => {
+        document.getElementById(buttonId).click();
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+    })''', button_id)
+
+
+async def run_dom_benchmark(browser, page, button_id: str) -> float:
+    """One operation, timed from a trace: the click's dispatch to the end of the frame's commit.
+
+    A clock around the click and a double requestAnimationFrame would wait for the next vsync,
+    so an operation of 2 ms could read 2 or 15 depending on where in the frame it landed. The
+    trace has the browser's own account: the click's EventDispatch, then the main-thread frame
+    that paints the change, which ends with its Commit to the compositor."""
+    await browser.start_tracing(page=page, categories=['devtools.timeline', 'disabled-by-default-devtools.timeline'])
+    await click_settled(page, button_id)
+    events = json.loads(await browser.stop_tracing())['traceEvents']
+    clicks = [e for e in events if e.get('name') == 'EventDispatch' and (e.get('args') or {}).get('data', {}).get('type') == 'click']
+    if not clicks:
+        return -1
+    start = min(e['ts'] for e in clicks)
+    after = sorted((e for e in events if e.get('ph') == 'X' and e['ts'] >= start), key=lambda e: e['ts'])
+    commit = next((e for e in after if e['name'] == 'Commit'), None)
+    if commit:
+        end = commit['ts'] + commit['dur']
+    else:
+        paints = [e['ts'] + e['dur'] for e in after if e['name'] == 'Paint']
+        if not paints:
+            return -1
+        end = max(paints)
+    return (end - start) / 1000.0
+
+def summarize(samples: dict) -> dict:
+    """{label: [durations]} -> {label: {median, mean, min, max, stddev, samples}}."""
+    out = {}
+    for label, durations in samples.items():
+        if durations:
+            out[label] = {
+                'median': statistics.median(durations),
+                'mean': statistics.mean(durations),
+                'min': min(durations),
+                'max': max(durations),
+                'stddev': statistics.stdev(durations) if len(durations) > 1 else 0,
+                'samples': len(durations),
             }
-            
-            const startTime = performance.now();
-            button.click();
-            
-            // Double-rAF: wait for DOM update AND paint to complete
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    const duration = performance.now() - startTime;
-                    
-                    // Debug: count rendered rows
-                    const rowCount = document.querySelectorAll('.row').length;
-                    console.log(`Rendered rows: ${rowCount}, Duration: ${duration}ms`);
-                    
-                    resolve(duration);
-                });
-            });
-        });
-    }''', button_id)
-    await asyncio.sleep(0.1)
-    return result
+        else:
+            out[label] = {'median': -1, 'mean': -1, 'error': 'No valid results'}
+    return out
+
 
 async def benchmark_framework_dom(browser, framework: str, port: int) -> dict:
-    """Run DOM benchmarks for a single framework."""
+    """One cycle of the DOM benchmarks for a framework: {label: [durations]}."""
     results = {}
     page = await browser.new_page()
     await page.goto(f'http://localhost:{port}')
@@ -190,34 +215,26 @@ async def benchmark_framework_dom(browser, framework: str, port: int) -> dict:
     
     # Warmup runs - give JIT time to optimize
     for _ in range(WARMUP_RUNS):
-        await run_dom_benchmark(page, 'create1000')
-        await asyncio.sleep(0.3)
-        await run_dom_benchmark(page, 'clear')
-        await asyncio.sleep(0.3)
-    
+        await click_settled(page, 'create1000')
+        await asyncio.sleep(0.1)
+        await click_settled(page, 'clear')
+        await asyncio.sleep(0.1)
+
     # Run benchmarks
     for button_id, label in DOM_BENCHMARKS:
         durations = []
         for _ in range(BENCHMARK_RUNS):
             # Clear before each create to ensure consistent starting state
             if button_id == 'create1000':
-                await run_dom_benchmark(page, 'clear')
-                await asyncio.sleep(0.1)
-            duration = await run_dom_benchmark(page, button_id)
+                await click_settled(page, 'clear')
+                await asyncio.sleep(0.05)
+            duration = await run_dom_benchmark(browser, page, button_id)
             if duration > 0:
                 durations.append(duration)
+            await asyncio.sleep(0.05)
         
-        if durations:
-            results[label] = {
-                'mean': statistics.mean(durations),
-                'median': statistics.median(durations),
-                'min': min(durations),
-                'max': max(durations),
-                'stddev': statistics.stdev(durations) if len(durations) > 1 else 0,
-            }
-        else:
-            results[label] = {'mean': -1, 'error': 'No valid results'}
-    
+        results[label] = durations
+
     await page.close()
     return results
 
@@ -264,32 +281,38 @@ async def run_dom_benchmarks() -> tuple:
         # Use visible browser - headless throttles requestAnimationFrame
         browser = await p.chromium.launch(headless=False)
         
+        samples = {fw: {} for fw in FRAMEWORKS}
+        failed = {}
+        for cycle in range(CYCLES):
+            print(f"  Cycle {cycle + 1} of {CYCLES}")
+            for fw in FRAMEWORKS:
+                if fw not in servers or fw in failed:
+                    continue
+
+                port = servers[fw]['port']
+                print(f"    {fw.capitalize()} (port {port})...", flush=True)
+                try:
+                    if browser_name == "Unknown Browser":
+                        page = await browser.new_page()
+                        await page.goto(f'http://localhost:{port}')
+                        browser_name = parse_browser(await page.evaluate('navigator.userAgent'))
+                        print(f"  Browser: {browser_name}")
+                        await page.close()
+                    results = await benchmark_framework_dom(browser, fw, port)
+                    for label, durations in results.items():
+                        samples[fw].setdefault(label, []).extend(durations)
+                    create_time = statistics.median(results.get('Create 1,000 rows') or [-1])
+                    print(f"      -> Create 1000: {create_time:.1f}ms ✓")
+                except Exception as e:
+                    print(f"      ✗ ({e})")
+                    failed[fw] = str(e)
+
         for fw in FRAMEWORKS:
-            if fw not in servers:
-                continue
-            
-            port = servers[fw]['port']
-            print(f"    {fw.capitalize()} (port {port})...", flush=True)
-            try:
-                page = await browser.new_page()
-                await page.goto(f'http://localhost:{port}')
-                
-                # Get browser version from first page
-                if browser_name == "Unknown Browser":
-                    ua = await page.evaluate('navigator.userAgent')
-                    browser_name = parse_browser(ua)
-                    print(f"  Browser: {browser_name}")
-                
-                await page.close()
-                results = await benchmark_framework_dom(browser, fw, port)
-                all_results[fw] = results
-                # Print key results immediately for verification
-                create_time = results.get('Create 1,000 rows', {}).get('mean', -1)
-                print(f"      -> Create 1000: {create_time:.1f}ms ✓")
-            except Exception as e:
-                print(f"      ✗ ({e})")
-                all_results[fw] = {'error': str(e)}
-        
+            if fw in failed:
+                all_results[fw] = {'error': failed[fw]}
+            elif samples[fw]:
+                all_results[fw] = summarize(samples[fw])
+
         await browser.close()
     
     # Stop servers
@@ -299,245 +322,216 @@ async def run_dom_benchmarks() -> tuple:
     return all_results, browser_name
 
 
+# ---- ranking and the shown values ---------------------------------------------------------
+# a value is judged as it is printed, to one decimal: two frameworks that print the same number
+# are tied, both get the star, and tied names come in alphabetical order
+
+def shown(v: float) -> float:
+    return round(v + 1e-9, 1)
+
+
+def ranked(vals):
+    """[(fw, value)] -> (sorted by shown value then name, the shown best, the raw best)."""
+    order = sorted(vals, key=lambda x: (shown(x[1]), x[0]))
+    if not order:
+        return [], None, None
+    best = shown(order[0][1])
+    best_raw = min(v for _, v in order if shown(v) == best)
+    return order, best, best_raw
+
+
+def is_best(v, best) -> bool:
+    return best is not None and shown(v) == best
+
+
+def pct_more(v, best, best_raw, floor=0.5) -> str:
+    """how far behind the best, as printed next to a value: '+34%'; nothing for the best, or when
+    the gap is under floor (half a millisecond, a kilobyte): a percentage of a tenth is noise."""
+    if is_best(v, best) or not best_raw or v - best_raw < floor:
+        return ''
+    return f'+{(v / best_raw - 1) * 100:.0f}%'
+
+
 def print_bundle_results(sizes: dict):
     """Print bundle size results."""
     print_header("BUNDLE SIZE (Counter App)")
-    print(f"{'Framework':<15} | {'Size':>12}")
-    print("-" * 30)
-    
-    sorted_sizes = sorted(sizes.items(), key=lambda x: x[1])
-    winner = sorted_sizes[0][0] if sorted_sizes else None
-    
-    for fw, size in sorted_sizes:
-        kb = size / 1024
-        star = " ★" if fw == winner else ""
-        print(f"{fw.capitalize():<15} | {kb:>10.1f}KB{star}")
+    print(f"{'Framework':<12} | {'Size':>10} | {'vs best':>8}")
+    print("-" * 36)
+    order, best, best_raw = ranked([(fw, s / 1024) for fw, s in sizes.items() if s > 0])
+    for fw, kb in order:
+        name = fw.capitalize() + (" ★" if is_best(kb, best) else "")
+        print(f"{name:<12} | {kb:>7.1f} KB | {pct_more(kb, best, best_raw, 1.0):>8}")
 
 
 def print_dom_results(results: dict):
     """Print DOM benchmark results."""
     if not results:
         return
-    
+
     print_header("DOM PERFORMANCE (Rows App)")
-    
     benchmarks = ['Create 1,000 rows', 'Update 1,000 rows', 'Swap rows', 'Clear rows']
-    
-    # Header
-    header = f"{'Benchmark':<22}"
+    header = f"{'Benchmark':<20}"
     for fw in FRAMEWORKS:
-        header += f" | {fw.capitalize():>10}"
+        header += f" | {fw.capitalize():>15}"
     print(header)
-    print("-" * 75)
-    
-    # Results
+    print("-" * len(header))
     for bench in benchmarks:
-        row = f"{bench:<22}"
-        # Collect values
-        vals = {}
+        vals = [(fw, results[fw][bench]['median']) for fw in FRAMEWORKS
+                if fw in results and bench in results[fw] and results[fw][bench].get('median', -1) > 0]
+        _, best, best_raw = ranked(vals)
+        row = f"{bench:<20}"
         for fw in FRAMEWORKS:
-            if fw in results and bench in results[fw]:
-                val = results[fw][bench].get('mean', -1)
-                if val > 0:
-                    vals[fw] = val
-        
-        # Find minimum value for winner detection
-        min_val = min(vals.values()) if vals else 0
-        
-        # Print in framework order (matching header)
-        for fw in FRAMEWORKS:
-            val = vals.get(fw, -1)
-            if val > 0:
-                is_winner = (val == min_val)
-                star = " ★" if is_winner else ""
-                row += f" | {val:>7.1f}ms{star}"
-            else:
-                row += " |       N/A"
+            v = dict(vals).get(fw)
+            if v is None:
+                row += f" | {'n/a':>15}"
+                continue
+            cell = f"{v:.1f}ms" + (" ★" if is_best(v, best) else f" {pct_more(v, best, best_raw)}")
+            row += f" | {cell:>15}"
         print(row)
-    
-    print("-" * 60)
+    print("-" * len(header))
 
 
-def generate_svg_report(bundle_sizes: dict, dom_results: dict, browser_name: str = ""):
-    """Generate combined SVG visualization."""
+# ---- the chart -----------------------------------------------------------------------------
+
+def framework_marks() -> str:
+    """<symbol>s for the four marks: the koi from the repository's logo, an atom, the V, an S."""
+    paths = ''
+    logo = os.path.join(BENCHMARK_DIR, '..', '..', 'images', 'logo.svg')
+    if os.path.exists(logo):
+        import re
+        with open(logo) as f:
+            # the koi is the logo's paths; its rects are a small bar chart of their own
+            paths = ''.join(re.findall(r'<path [^>]*/>', f.read()))
+    marks = [
+        f'<symbol id="m-coi" viewBox="15 0 163 108">{paths}</symbol>',
+        '<symbol id="m-react" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="#00d8ff"/>'
+        + ''.join(f'<ellipse cx="12" cy="12" rx="10.5" ry="4" fill="none" stroke="#00d8ff" stroke-width="1.3" transform="rotate({a} 12 12)"/>' for a in (0, 60, 120))
+        + '</symbol>',
+        '<symbol id="m-vue" viewBox="0 0 24 24"><path d="M2 3h4l6 10.4L18 3h4L12 21z" fill="#42b883"/><path d="M6.6 3h3l2.4 4.2L14.4 3h3l-5.4 9.4z" fill="#35495e"/></symbol>',
+        '<symbol id="m-svelte" viewBox="0 0 24 24"><path d="M17 6.2c-2.4-2.3-6.4-2.6-8.8-.6-2.3 1.9-1.8 5 .8 6.2 2.6 1.2 6.4 1 7.5 3.7 1.1 2.6-1.3 5.3-4.3 5.6-2.6.3-4.9-.6-6.3-2.3" fill="none" stroke="#e97d30" stroke-width="3.2" stroke-linecap="round"/></symbol>',
+    ]
+    return '<defs>' + ''.join(marks) + '</defs>'
+
+
+def mark(fw: str, x: float, y: float, size: float) -> str:
+    return f'<use href="#m-{fw}" x="{x:.1f}" y="{y:.1f}" width="{size * 1.6:.1f}" height="{size}"/>'
+
+
+def generate_svg_report(bundle_sizes: dict, dom_results: dict, browser_name: str = "", date: str = ""):
+    """The chart: bundle sizes, the DOM operations, Coi against the best of the others."""
     has_dom = bool(dom_results)
-    width = 800
-    height = 900 if has_dom else 280
-    
-    bg_color, text_main, text_sub = "#f8f9fa", "#212529", "#6c757d"
-    
-    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif; background: {bg_color};">']
-    svg.append(f'<rect width="100%" height="100%" fill="{bg_color}"/>')
-    
-    # Title
-    svg.append(f'<text x="{width/2}" y="35" text-anchor="middle" fill="{text_main}" font-size="22" font-weight="bold">Coi vs React vs Vue vs Svelte Benchmark</text>')
-    
-    # Browser info subtitle (if available)
-    if browser_name:
-        svg.append(f'<text x="{width/2}" y="52" text-anchor="middle" fill="{text_sub}" font-size="11">{browser_name}</text>')
-    
-    # Legend - centered properly (4 items: ~320px total width)
-    legend_y = 60
-    legend_start = width/2 - 160
+    width = 820
+    bg, text_main, text_sub, line = "#fbfbfd", "#1f2328", "#6b7280", "#e5e7eb"
+    green, orange = "#16a34a", "#d97706"
+    body = []
+    font = "font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"
+
+    # the title, what ran it and when, the legend
+    body.append(f'<text x="{width/2}" y="38" text-anchor="middle" fill="{text_main}" font-size="22" font-weight="bold">Coi vs React vs Vue vs Svelte</text>')
+    sub = " · ".join(s for s in (browser_name, date) if s)
+    if sub:
+        body.append(f'<text x="{width/2}" y="57" text-anchor="middle" fill="{text_sub}" font-size="12">{sub}</text>')
+    legend_x = width / 2 - 190
     for i, fw in enumerate(FRAMEWORKS):
-        lx = legend_start + i * 85
-        svg.append(f'<rect x="{lx}" y="{legend_y}" width="14" height="14" fill="{COLORS[fw]}" rx="3"/>')
-        svg.append(f'<text x="{lx + 20}" y="{legend_y + 12}" fill="{text_main}" font-size="13" font-weight="600">{fw.capitalize()}</text>')
-    
-    y = 105
-    chart_x = 180
-    max_bar_width = 450
-    
-    # Bundle Size Section
-    svg.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="16" font-weight="bold">Bundle Size</text>')
-    svg.append(f'<text x="{width/2}" y="{y + 18}" text-anchor="middle" fill="{text_sub}" font-size="12">Counter App - Smaller is better (KB)</text>')
-    
-    y += 45
-    sorted_sizes = sorted(bundle_sizes.items(), key=lambda x: x[1])
-    max_size = max(bundle_sizes.values()) if bundle_sizes.values() else 1
-    min_size = min(s for s in bundle_sizes.values() if s > 0) if bundle_sizes.values() else 0
-    
-    for fw, size in sorted_sizes:
-        kb = size / 1024
-        bar_w = (size / max_size) * max_bar_width
-        is_winner = size == min_size
-        
-        svg.append(f'<text x="{chart_x - 12}" y="{y + 18}" text-anchor="end" fill="{text_main}" font-size="13" font-weight="bold">{fw.capitalize()}</text>')
-        svg.append(f'<rect x="{chart_x}" y="{y}" width="{bar_w}" height="26" fill="{COLORS[fw]}" rx="4"/>')
-        
-        weight = "bold" if is_winner else "normal"
-        star = " ★" if is_winner else ""
-        svg.append(f'<text x="{chart_x + bar_w + 8}" y="{y + 18}" fill="{text_main}" font-size="13" font-weight="{weight}">{kb:.1f} KB{star}</text>')
+        lx = legend_x + i * 100
+        body.append(mark(fw, lx, 70, 16))
+        body.append(f'<text x="{lx + 32}" y="83" fill="{text_main}" font-size="13" font-weight="600">{fw.capitalize()}</text>')
+
+    y = 128
+    chart_x = 190
+    max_bar_width = 400
+
+    def label(x, yy, value, best, best_raw, unit, size, floor=0.5):
+        star = " ★" if is_best(value, best) else ""
+        weight = "bold" if star else "normal"
+        more = pct_more(value, best, best_raw, floor)
+        out = [f'<text x="{x:.1f}" y="{yy}" fill="{text_main}" font-size="{size}" font-weight="{weight}">{value:.1f} {unit}{star}</text>']
+        if more:
+            out.append(f'<text x="{x + (len(f"{value:.1f} {unit}") * size * 0.58):.1f}" y="{yy}" fill="{text_sub}" font-size="{size - 1}">{more}</text>')
+        return out
+
+    # bundle sizes
+    body.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="16" font-weight="bold">Bundle size</text>')
+    body.append(f'<text x="{width/2}" y="{y + 18}" text-anchor="middle" fill="{text_sub}" font-size="12">Counter app, everything served · smaller is better</text>')
+    y += 42
+    order, best, best_raw = ranked([(fw, s / 1024) for fw, s in bundle_sizes.items() if s > 0])
+    max_size = max((kb for _, kb in order), default=1)
+    for fw, kb in order:
+        bar_w = max(2, kb / max_size * max_bar_width)
+        body.append(mark(fw, chart_x - 128, y + 4, 18))
+        body.append(f'<text x="{chart_x - 14}" y="{y + 18}" text-anchor="end" fill="{text_main}" font-size="13" font-weight="600">{fw.capitalize()}</text>')
+        body.append(f'<rect x="{chart_x}" y="{y}" width="{bar_w:.1f}" height="26" fill="{COLORS[fw]}" rx="4"/>')
+        body.extend(label(chart_x + bar_w + 10, y + 18, kb, best, best_raw, "KB", 13, 1.0))
         y += 36
-    
-    # DOM Performance Section (if available)
+
     if has_dom:
-        y += 30
-        svg.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="16" font-weight="bold">DOM Performance</text>')
-        svg.append(f'<text x="{width/2}" y="{y + 18}" text-anchor="middle" fill="{text_sub}" font-size="12">Rows App - Lower is better (ms)</text>')
-        
-        y += 45
+        y += 24
+        body.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="16" font-weight="bold">DOM performance</text>')
+        body.append(f'<text x="{width/2}" y="{y + 18}" text-anchor="middle" fill="{text_sub}" font-size="12">Rows app, 1,000 rows, median of {BENCHMARK_RUNS * CYCLES} · lower is better</text>')
+        y += 42
         benchmarks = ['Create 1,000 rows', 'Update 1,000 rows', 'Swap rows', 'Clear rows']
-        
-        # Find max value for scaling
-        max_val = 1
-        for fw in FRAMEWORKS:
-            if fw in dom_results:
-                for bench in benchmarks:
-                    if bench in dom_results[fw]:
-                        val = dom_results[fw][bench].get('mean', 0)
-                        if val > max_val:
-                            max_val = val
-        
-        bar_height = 18
-        bar_gap = 4
-        group_gap = 25
-        max_bar_width = 380
-        
+        max_val = max((dom_results[fw][b]['median'] for fw in FRAMEWORKS for b in benchmarks
+                       if fw in dom_results and b in dom_results[fw] and dom_results[fw][b].get('median', 0) > 0), default=1)
+        bar_h, bar_gap, group_gap = 18, 4, 26
         for bench in benchmarks:
-            # Benchmark label
-            svg.append(f'<text x="{chart_x - 12}" y="{y + bar_height + 6}" text-anchor="end" fill="{text_main}" font-size="12" font-weight="bold">{bench}</text>')
-            
-            # Get values and find winner, sorted fastest first
-            bench_vals = []
-            for fw in FRAMEWORKS:
-                if fw in dom_results and bench in dom_results[fw]:
-                    v = dom_results[fw][bench].get('mean', 0)
-                    if v > 0:
-                        bench_vals.append((fw, v))
-            
-            bench_vals.sort(key=lambda x: x[1])  # Sort by time, fastest first
-            min_val = bench_vals[0][1] if bench_vals else 0
-            
-            # Draw bars for each framework (sorted)
-            bar_y = y
-            for fw, val in bench_vals:
-                bar_w = (val / max_val) * max_bar_width
-                is_winner = (val == min_val)
-                
-                svg.append(f'<rect x="{chart_x}" y="{bar_y}" width="{bar_w}" height="{bar_height}" fill="{COLORS[fw]}" rx="3"/>')
-                
-                # Value label
-                star = " ★" if is_winner else ""
-                weight = "bold" if is_winner else "normal"
-                svg.append(f'<text x="{chart_x + bar_w + 8}" y="{bar_y + 13}" fill="{text_main}" font-size="11" font-weight="{weight}">{val:.1f}ms{star}</text>')
-                
-                bar_y += bar_height + bar_gap
-            
-            y += (bar_height + bar_gap) * 3 + group_gap
-        
-        # Summary table: Coi vs Best Other
-        y += 10
-        svg.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="14" font-weight="bold">Coi vs Best Other</text>')
-        y += 25
-        
-        # Table headers
-        col_metric = 100
-        col_coi = 320
-        col_other = 480
-        col_diff = 640
-        
-        svg.append(f'<text x="{col_metric}" y="{y}" fill="{text_sub}" font-size="11" font-weight="bold">Metric</text>')
-        svg.append(f'<text x="{col_coi}" y="{y}" text-anchor="end" fill="{COLORS["coi"]}" font-size="11" font-weight="bold">Coi</text>')
-        svg.append(f'<text x="{col_other}" y="{y}" text-anchor="end" fill="{text_sub}" font-size="11" font-weight="bold">Best Other</text>')
-        svg.append(f'<text x="{col_diff}" y="{y}" text-anchor="end" fill="{text_sub}" font-size="11" font-weight="bold">Difference</text>')
-        y += 18
-        
-        # Build comparison data
-        comparisons = []
-        
-        # Bundle size
-        if bundle_sizes and 'coi' in bundle_sizes:
-            coi_size = bundle_sizes['coi'] / 1024
-            others = [(fw, s/1024) for fw, s in bundle_sizes.items() if fw != 'coi' and s > 0]
+            vals = [(fw, dom_results[fw][bench]['median']) for fw in FRAMEWORKS
+                    if fw in dom_results and bench in dom_results[fw] and dom_results[fw][bench].get('median', -1) > 0]
+            order, best, best_raw = ranked(vals)
+            body.append(f'<text x="{chart_x - 128}" y="{y + 4}" fill="{text_main}" font-size="12" font-weight="bold">{bench}</text>')
+            bar_y = y + 14
+            for fw, v in order:
+                bar_w = max(2, v / max_val * max_bar_width)
+                body.append(mark(fw, chart_x - 128, bar_y + 2, 14))
+                body.append(f'<text x="{chart_x - 100}" y="{bar_y + 13}" fill="{text_sub}" font-size="11">{fw.capitalize()}</text>')
+                body.append(f'<rect x="{chart_x}" y="{bar_y}" width="{bar_w:.1f}" height="{bar_h}" fill="{COLORS[fw]}" rx="3"/>')
+                body.extend(label(chart_x + bar_w + 8, bar_y + 13, v, best, best_raw, "ms", 11))
+                bar_y += bar_h + bar_gap
+            y = bar_y + group_gap
+
+        # Coi against the best of the others
+        y += 6
+        body.append(f'<text x="{width/2}" y="{y}" text-anchor="middle" fill="{text_main}" font-size="14" font-weight="bold">Coi against the best of the others</text>')
+        y += 26
+        col_metric, col_coi, col_other, col_diff = 110, 330, 520, 710
+        for x, t, anchor, color in ((col_metric, "Metric", "start", text_sub), (col_coi, "Coi", "end", COLORS["coi"]),
+                                    (col_other, "Best other", "end", text_sub), (col_diff, "Difference", "end", text_sub)):
+            body.append(f'<text x="{x}" y="{y}" text-anchor="{anchor}" fill="{color}" font-size="11" font-weight="bold">{t}</text>')
+        y += 8
+        body.append(f'<line x1="{col_metric}" y1="{y}" x2="{col_diff}" y2="{y}" stroke="{line}"/>')
+        y += 16
+
+        rows = []
+        if bundle_sizes.get('coi'):
+            others = [(fw, s / 1024) for fw, s in bundle_sizes.items() if fw != 'coi' and s > 0]
             if others:
-                best_fw, best_val = min(others, key=lambda x: x[1])
-                win = coi_size <= best_val
-                comparisons.append(('Bundle Size', coi_size, best_val, f'{coi_size:.1f} KB', f'{best_val:.1f} KB ({best_fw.capitalize()})', win, True))
-        
-        # DOM metrics
+                fw, v = min(others, key=lambda x: (shown(x[1]), x[0]))
+                rows.append(('Bundle size', bundle_sizes['coi'] / 1024, v, fw, 'KB'))
         for bench in benchmarks:
             if 'coi' in dom_results and bench in dom_results['coi']:
-                coi_val = dom_results['coi'][bench].get('mean', 0)
-                others = []
-                for fw in FRAMEWORKS:
-                    if fw != 'coi' and fw in dom_results and bench in dom_results[fw]:
-                        others.append((fw, dom_results[fw][bench].get('mean', 0)))
+                others = [(fw, dom_results[fw][bench]['median']) for fw in FRAMEWORKS
+                          if fw != 'coi' and fw in dom_results and bench in dom_results[fw] and dom_results[fw][bench].get('median', 0) > 0]
                 if others:
-                    best_fw, best_val = min(others, key=lambda x: x[1])
-                    if best_val > 0:
-                        win = coi_val <= best_val
-                        comparisons.append((bench, coi_val, best_val, f'{coi_val:.1f} ms', f'{best_val:.1f} ms ({best_fw.capitalize()})', win, True))
-        
-        # Draw rows
-        for metric, coi_val, other_val, coi_str, other_str, is_win, lower_better in comparisons:
-            abs_diff = abs(coi_val - other_val)
-            
-            if is_win:
-                if 'KB' in coi_str:
-                    diff_str = f'✓ {abs_diff:.1f} KB smaller'
-                else:
-                    diff_str = f'✓ {abs_diff:.1f} ms faster'
-                diff_color = '#22c55e'  # green
-            elif abs_diff < 2:  # Less than 2ms/KB difference
-                diff_str = f'≈ Same'
-                diff_color = text_sub
+                    fw, v = min(others, key=lambda x: (shown(x[1]), x[0]))
+                    rows.append((bench, dom_results['coi'][bench]['median'], v, fw, 'ms'))
+        for metric, coi_v, other_v, other_fw, unit in rows:
+            if shown(coi_v) == shown(other_v) or abs(coi_v - other_v) < (1.0 if unit == 'KB' else 0.5):
+                diff, color = "same", text_sub
             else:
-                if 'KB' in coi_str:
-                    diff_str = f'+{abs_diff:.1f} KB'
-                else:
-                    diff_str = f'+{abs_diff:.1f} ms'
-                diff_color = '#f59e0b'  # orange
-            
-            svg.append(f'<text x="{col_metric}" y="{y}" fill="{text_main}" font-size="11">{metric}</text>')
-            coi_weight = 'bold' if is_win else 'normal'
-            svg.append(f'<text x="{col_coi}" y="{y}" text-anchor="end" fill="{text_main}" font-size="11" font-weight="{coi_weight}">{coi_str}</text>')
-            svg.append(f'<text x="{col_other}" y="{y}" text-anchor="end" fill="{text_sub}" font-size="11">{other_str}</text>')
-            svg.append(f'<text x="{col_diff}" y="{y}" text-anchor="end" fill="{diff_color}" font-size="11" font-weight="bold">{diff_str}</text>')
+                pct = (coi_v / other_v - 1) * 100 if other_v else 0
+                word = "less" if coi_v < other_v else "more"
+                diff = f'{pct:+.0f}% ({abs(coi_v - other_v):.1f} {unit} {word})'
+                color = green if coi_v < other_v else orange
+            body.append(f'<text x="{col_metric}" y="{y}" fill="{text_main}" font-size="11">{metric}</text>')
+            body.append(f'<text x="{col_coi}" y="{y}" text-anchor="end" fill="{text_main}" font-size="11" font-weight="{"bold" if coi_v <= other_v else "normal"}">{coi_v:.1f} {unit}</text>')
+            body.append(f'<text x="{col_other}" y="{y}" text-anchor="end" fill="{text_sub}" font-size="11">{other_v:.1f} {unit} ({other_fw.capitalize()})</text>')
+            body.append(f'<text x="{col_diff}" y="{y}" text-anchor="end" fill="{color}" font-size="11" font-weight="bold">{diff}</text>')
             y += 18
-    
-    svg.append('</svg>')
-    
+
+    height = y + 16
+    svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="100%" style="{font} background: {bg};">',
+           framework_marks(),
+           f'<rect width="100%" height="100%" fill="{bg}"/>'] + body + ['</svg>']
+
     os.makedirs(RESULTS_DIR, exist_ok=True)
     output_path = os.path.join(RESULTS_DIR, 'benchmark_results.svg')
     with open(output_path, 'w') as f:
@@ -549,22 +543,32 @@ def main():
     skip_build = "--no-build" in sys.argv
     size_only = "--size-only" in sys.argv
     dom_only = "--dom-only" in sys.argv
-    
+    json_path = os.path.join(RESULTS_DIR, 'benchmark_results.json')
+
+    # the tables and the chart again from the last run's results, nothing measured
+    if "--report-only" in sys.argv:
+        with open(json_path) as f:
+            saved = json.load(f)
+        print_bundle_results(saved.get('bundle_sizes', {}))
+        print_dom_results(saved.get('dom_performance', {}))
+        generate_svg_report(saved.get('bundle_sizes', {}), saved.get('dom_performance', {}), saved.get('browser', ''), saved.get('date', ''))
+        return
+
     print_header("COI BENCHMARK SUITE")
-    
+
     # Build projects
     if not skip_build:
         if not dom_only:
             build_counter_apps()
         if not size_only:
             build_rows_apps()
-    
+
     # Measure bundle sizes
     bundle_sizes = {}
     if not dom_only:
         bundle_sizes = measure_bundle_sizes()
         print_bundle_results(bundle_sizes)
-    
+
     # Run DOM benchmarks
     dom_results = {}
     browser_name = ""
@@ -572,18 +576,18 @@ def main():
         print_header("RUNNING DOM BENCHMARKS")
         dom_results, browser_name = asyncio.run(run_dom_benchmarks())
         print_dom_results(dom_results)
-    
-    # Generate reports
-    generate_svg_report(bundle_sizes, dom_results, browser_name)
-    
-    # Save JSON
+
+    import datetime
+    date = datetime.date.today().isoformat()
+    generate_svg_report(bundle_sizes, dom_results, browser_name, date)
+
     output = {
         'browser': browser_name,
+        'date': date,
         'bundle_sizes': bundle_sizes,
         'dom_performance': dom_results
     }
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    json_path = os.path.join(RESULTS_DIR, 'benchmark_results.json')
     with open(json_path, 'w') as f:
         json.dump(output, f, indent=2)
     print(f"✓ JSON results: {json_path}")

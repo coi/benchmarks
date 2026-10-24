@@ -54,12 +54,12 @@ component Row(pub int id, pub mut string label, pub mut bool selected, def onSel
     }
 
     view {
-        <div class={"row" + (selected ? " selected" : "")}>
+        <li class={"row" + (selected ? " selected" : "")}>
             <span class="row-id">{id}</span>
             <span class="row-label" onclick={handleSelect}>{label}</span>
              <span class="row-actions">
                 <button onclick={handleRemove}>×</button>
             </span>
-    </div>
+    </li>
     }
 }
