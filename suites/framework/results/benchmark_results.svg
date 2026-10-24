@@ -1,90 +1,165 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 900" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa;">
-<rect width="100%" height="100%" fill="#f8f9fa"/>
-<text x="400.0" y="35" text-anchor="middle" fill="#212529" font-size="22" font-weight="bold">Coi vs React vs Vue vs Svelte Benchmark</text>
-<text x="400.0" y="52" text-anchor="middle" fill="#6c757d" font-size="11">Chrome 143.0.0.0</text>
-<rect x="240.0" y="60" width="14" height="14" fill="#9477ff" rx="3"/>
-<text x="260.0" y="72" fill="#212529" font-size="13" font-weight="600">Coi</text>
-<rect x="325.0" y="60" width="14" height="14" fill="#00d8ff" rx="3"/>
-<text x="345.0" y="72" fill="#212529" font-size="13" font-weight="600">React</text>
-<rect x="410.0" y="60" width="14" height="14" fill="#42b883" rx="3"/>
-<text x="430.0" y="72" fill="#212529" font-size="13" font-weight="600">Vue</text>
-<rect x="495.0" y="60" width="14" height="14" fill="#e97d30" rx="3"/>
-<text x="515.0" y="72" fill="#212529" font-size="13" font-weight="600">Svelte</text>
-<text x="400.0" y="105" text-anchor="middle" fill="#212529" font-size="16" font-weight="bold">Bundle Size</text>
-<text x="400.0" y="123" text-anchor="middle" fill="#6c757d" font-size="12">Counter App - Smaller is better (KB)</text>
-<text x="168" y="168" text-anchor="end" fill="#212529" font-size="13" font-weight="bold">Coi</text>
-<rect x="180" y="150" width="54.17540626224976" height="26" fill="#9477ff" rx="4"/>
-<text x="242.17540626224977" y="168" fill="#212529" font-size="13" font-weight="bold">17.1 KB ★</text>
-<text x="168" y="204" text-anchor="end" fill="#212529" font-size="13" font-weight="bold">Svelte</text>
-<rect x="180" y="186" width="89.48875944735954" height="26" fill="#e97d30" rx="4"/>
-<text x="277.48875944735954" y="204" fill="#212529" font-size="13" font-weight="normal">28.2 KB</text>
-<text x="168" y="240" text-anchor="end" fill="#212529" font-size="13" font-weight="bold">Vue</text>
-<rect x="180" y="222" width="195.09768862053076" height="26" fill="#42b883" rx="4"/>
-<text x="383.0976886205308" y="240" fill="#212529" font-size="13" font-weight="normal">61.6 KB</text>
-<text x="168" y="276" text-anchor="end" fill="#212529" font-size="13" font-weight="bold">React</text>
-<rect x="180" y="258" width="450.0" height="26" fill="#00d8ff" rx="4"/>
-<text x="638.0" y="276" fill="#212529" font-size="13" font-weight="normal">142.0 KB</text>
-<text x="400.0" y="324" text-anchor="middle" fill="#212529" font-size="16" font-weight="bold">DOM Performance</text>
-<text x="400.0" y="342" text-anchor="middle" fill="#6c757d" font-size="12">Rows App - Lower is better (ms)</text>
-<text x="168" y="393" text-anchor="end" fill="#212529" font-size="12" font-weight="bold">Create 1,000 rows</text>
-<rect x="180" y="369" width="343.78378378519807" height="18" fill="#00d8ff" rx="3"/>
-<text x="531.783783785198" y="382" fill="#212529" font-size="11" font-weight="bold">25.4ms ★</text>
-<rect x="180" y="391" width="347.02702702643626" height="18" fill="#e97d30" rx="3"/>
-<text x="535.0270270264363" y="404" fill="#212529" font-size="11" font-weight="normal">25.7ms</text>
-<rect x="180" y="413" width="347.29729730073456" height="18" fill="#42b883" rx="3"/>
-<text x="535.2972973007345" y="426" fill="#212529" font-size="11" font-weight="normal">25.7ms</text>
-<rect x="180" y="435" width="380.0" height="18" fill="#9477ff" rx="3"/>
-<text x="568.0" y="448" fill="#212529" font-size="11" font-weight="normal">28.1ms</text>
-<text x="168" y="484" text-anchor="end" fill="#212529" font-size="12" font-weight="bold">Update 1,000 rows</text>
-<rect x="180" y="460" width="149.7297297286162" height="18" fill="#e97d30" rx="3"/>
-<text x="337.72972972861623" y="473" fill="#212529" font-size="11" font-weight="bold">11.1ms ★</text>
-<rect x="180" y="482" width="165.67567567309413" height="18" fill="#00d8ff" rx="3"/>
-<text x="353.67567567309413" y="495" fill="#212529" font-size="11" font-weight="normal">12.3ms</text>
-<rect x="180" y="504" width="181.35135135334212" height="18" fill="#9477ff" rx="3"/>
-<text x="369.3513513533421" y="517" fill="#212529" font-size="11" font-weight="normal">13.4ms</text>
-<rect x="180" y="526" width="191.35135135135494" height="18" fill="#42b883" rx="3"/>
-<text x="379.35135135135494" y="539" fill="#212529" font-size="11" font-weight="normal">14.2ms</text>
-<text x="168" y="575" text-anchor="end" fill="#212529" font-size="12" font-weight="bold">Swap rows</text>
-<rect x="180" y="551" width="50.27027027191372" height="18" fill="#e97d30" rx="3"/>
-<text x="238.27027027191372" y="564" fill="#212529" font-size="11" font-weight="bold">3.7ms ★</text>
-<rect x="180" y="573" width="70.5405405422377" height="18" fill="#42b883" rx="3"/>
-<text x="258.5405405422377" y="586" fill="#212529" font-size="11" font-weight="normal">5.2ms</text>
-<rect x="180" y="595" width="103.78378378254851" height="18" fill="#9477ff" rx="3"/>
-<text x="291.78378378254854" y="608" fill="#212529" font-size="11" font-weight="normal">7.7ms</text>
-<rect x="180" y="617" width="358.64864865261944" height="18" fill="#00d8ff" rx="3"/>
-<text x="546.6486486526194" y="630" fill="#212529" font-size="11" font-weight="normal">26.5ms</text>
-<text x="168" y="666" text-anchor="end" fill="#212529" font-size="12" font-weight="bold">Clear rows</text>
-<rect x="180" y="642" width="22.972972970516754" height="18" fill="#42b883" rx="3"/>
-<text x="210.97297297051676" y="655" fill="#212529" font-size="11" font-weight="bold">1.7ms ★</text>
-<rect x="180" y="664" width="29.729729729808504" height="18" fill="#e97d30" rx="3"/>
-<text x="217.7297297298085" y="677" fill="#212529" font-size="11" font-weight="normal">2.2ms</text>
-<rect x="180" y="686" width="34.05405405565454" height="18" fill="#00d8ff" rx="3"/>
-<text x="222.05405405565455" y="699" fill="#212529" font-size="11" font-weight="normal">2.5ms</text>
-<rect x="180" y="708" width="112.70270270350474" height="18" fill="#9477ff" rx="3"/>
-<text x="300.70270270350477" y="721" fill="#212529" font-size="11" font-weight="normal">8.3ms</text>
-<text x="400.0" y="743" text-anchor="middle" fill="#212529" font-size="14" font-weight="bold">Coi vs Best Other</text>
-<text x="100" y="768" fill="#6c757d" font-size="11" font-weight="bold">Metric</text>
-<text x="320" y="768" text-anchor="end" fill="#9477ff" font-size="11" font-weight="bold">Coi</text>
-<text x="480" y="768" text-anchor="end" fill="#6c757d" font-size="11" font-weight="bold">Best Other</text>
-<text x="640" y="768" text-anchor="end" fill="#6c757d" font-size="11" font-weight="bold">Difference</text>
-<text x="100" y="786" fill="#212529" font-size="11">Bundle Size</text>
-<text x="320" y="786" text-anchor="end" fill="#212529" font-size="11" font-weight="bold">17.1 KB</text>
-<text x="480" y="786" text-anchor="end" fill="#6c757d" font-size="11">28.2 KB (Svelte)</text>
-<text x="640" y="786" text-anchor="end" fill="#22c55e" font-size="11" font-weight="bold">✓ 11.1 KB smaller</text>
-<text x="100" y="804" fill="#212529" font-size="11">Create 1,000 rows</text>
-<text x="320" y="804" text-anchor="end" fill="#212529" font-size="11" font-weight="normal">28.1 ms</text>
-<text x="480" y="804" text-anchor="end" fill="#6c757d" font-size="11">25.4 ms (React)</text>
-<text x="640" y="804" text-anchor="end" fill="#f59e0b" font-size="11" font-weight="bold">+2.7 ms</text>
-<text x="100" y="822" fill="#212529" font-size="11">Update 1,000 rows</text>
-<text x="320" y="822" text-anchor="end" fill="#212529" font-size="11" font-weight="normal">13.4 ms</text>
-<text x="480" y="822" text-anchor="end" fill="#6c757d" font-size="11">11.1 ms (Svelte)</text>
-<text x="640" y="822" text-anchor="end" fill="#f59e0b" font-size="11" font-weight="bold">+2.3 ms</text>
-<text x="100" y="840" fill="#212529" font-size="11">Swap rows</text>
-<text x="320" y="840" text-anchor="end" fill="#212529" font-size="11" font-weight="normal">7.7 ms</text>
-<text x="480" y="840" text-anchor="end" fill="#6c757d" font-size="11">3.7 ms (Svelte)</text>
-<text x="640" y="840" text-anchor="end" fill="#f59e0b" font-size="11" font-weight="bold">+4.0 ms</text>
-<text x="100" y="858" fill="#212529" font-size="11">Clear rows</text>
-<text x="320" y="858" text-anchor="end" fill="#212529" font-size="11" font-weight="normal">8.3 ms</text>
-<text x="480" y="858" text-anchor="end" fill="#6c757d" font-size="11">1.7 ms (Vue)</text>
-<text x="640" y="858" text-anchor="end" fill="#f59e0b" font-size="11" font-weight="bold">+6.6 ms</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 1054" width="100%" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #fbfbfd;">
+<defs><symbol id="m-coi" viewBox="15 0 163 108">
+
+
+
+
+<path d="M136.74 96.831C140.368 96.2109 138.302 91.9665 135.887 88.686C133.515 86.0001 128.39 80.9323 125.792 79.6908C120.889 77.3476 113.253 77.6907 119.397 87.1708C121.838 90.9383 128.82 98.1844 136.74 96.831Z" fill="#825FFF"/>
+<path d="M158.88 73.4223C158.88 76.4634 163.268 79.2294 164.583 83.2913C165.543 86.2572 164.116 93.9611 165.456 97.1092C168.379 103.975 174.198 105.576 168.477 105.576C147.789 105.576 141.469 81.1663 141.469 71.0615C141.469 60.9568 155.885 41.1704 175.25 43.3764C181.493 44.0876 175.663 44.5957 169.987 51.8437C167.422 55.1189 169.398 61.6019 167.424 64.9336C164.572 69.745 158.88 69.7493 158.88 73.4223Z" fill="#9477FF"/>
+<path d="M135.66 52.3013C134.571 61.6605 111.834 35.3426 102.411 35.3426C92.9889 35.3426 79.4559 25.7493 79.4559 16.3269C79.4559 6.90458 95.3378 -1.88914 107.055 0.353599C115.131 1.89958 106.734 8.72927 111.265 16.3269C115.641 23.6641 130.031 18.4323 128.108 34.4057C127.205 41.9132 137.583 35.7787 135.66 52.3013Z" fill="#9477FF"/>
+<path d="M63.2456 101.329C64.6395 103.289 67.2419 101.319 67.2419 101.319C67.2419 101.319 74.4402 96.7657 72.7284 90.0687C71.6222 85.7408 66.5184 77.8514 62.0577 88.2301C60.2938 92.3342 60.6574 97.6877 63.2456 101.329Z" fill="#825FFF"/>
+<path d="M21.0384 80.4681C20.4874 84.5572 26.0556 85.1373 26.0556 85.1373C26.0556 85.1373 39.8828 87.1811 45.5839 76.787C49.2682 70.0699 53.1214 55.1834 35.3756 62.9583C28.3584 66.0327 22.0615 72.8755 21.0384 80.4681Z" fill="#9477FF"/>
+<path d="M146.346 60.7515C155.876 70.1651 148.844 80.799 135.081 82.266C113.257 92.3819 100.424 93.536 80.8486 92.7565C54.8746 92.7565 28.7384 75.4999 28.7384 53.4866C28.7384 31.4733 49.3625 13.6254 72.9546 13.6254C90.5615 13.6254 106.772 19.144 124.555 37.7405C129.204 43.0865 140.486 55.5659 146.346 60.7515Z" fill="#ECE7FB"/>
+<circle cx="74.8854" cy="45.4114" r="11.0471" fill="#464445"/>
+<circle cx="72.9598" cy="38.9918" r="3.60274" fill="white"/>
+<path d="M150.042 73.1949C150.042 73.1949 148.081 79.717 138.062 81.7224C116.909 85.9563 122.776 93.0344 87.5597 93.0344C63.4681 93.0344 51.3769 87.0115 41.0008 78.036C40.0556 77.2184 63.5681 76.2482 72.0854 78.4786C90.8118 83.3824 106.67 82.9362 112.878 82.9362C100.062 82.9362 129.078 82.9362 112.878 82.9362C129.739 82.9362 150.042 73.1949 150.042 73.1949Z" fill="#E2D8FF"/>
+<path d="M138.339 85.6706C139.024 90.7536 132.102 91.4746 132.102 91.4746C132.102 91.4746 114.915 94.0152 107.828 81.0949C103.248 72.7453 98.4585 54.2408 120.517 63.9053C129.24 67.7269 137.067 76.2328 138.339 85.6706Z" fill="#9477FF"/>
+<path d="M114.196 104.738C117.825 104.118 115.482 96.3941 113.066 93.1136C110.694 90.4277 105.847 88.8395 103.249 87.598C98.3462 85.2548 90.71 85.5979 96.8536 95.078C99.2952 98.8455 106.277 106.092 114.196 104.738Z" fill="#8867FF"/>
+<ellipse cx="36.3489" cy="43.6735" rx="6.5491" ry="9.97861" transform="rotate(6.33721 36.3489 43.6735)" fill="#464445"/>
+<circle cx="37.7447" cy="37.4892" r="2.49675" fill="white"/>
+<g>
+<ellipse cx="80.1829" cy="61.0935" rx="6.46098" ry="3.34387" transform="rotate(-15 80.1829 61.0935)" fill="#FFB0AA" fill-opacity="0.26"/>
+</g>
+<g>
+<ellipse cx="34.0762" cy="57.6723" rx="4.16442" ry="2.02718" transform="rotate(20.5183 34.0762 57.6723)" fill="#FFB0AA" fill-opacity="0.26"/>
+</g>
+<path d="M47.9958 66.4442L51.665 68.2888L54.8266 66.382C54.9894 66.2838 55.1769 66.234 55.367 66.2386L58.9927 66.3253L61.1902 62.9088" stroke="#9477FF" stroke-opacity="0.36" stroke-width="2" stroke-linecap="round"/>
+
+</symbol><symbol id="m-react" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.3" fill="#00d8ff"/><ellipse cx="12" cy="12" rx="10.5" ry="4" fill="none" stroke="#00d8ff" stroke-width="1.3" transform="rotate(0 12 12)"/><ellipse cx="12" cy="12" rx="10.5" ry="4" fill="none" stroke="#00d8ff" stroke-width="1.3" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10.5" ry="4" fill="none" stroke="#00d8ff" stroke-width="1.3" transform="rotate(120 12 12)"/></symbol><symbol id="m-vue" viewBox="0 0 24 24"><path d="M2 3h4l6 10.4L18 3h4L12 21z" fill="#42b883"/><path d="M6.6 3h3l2.4 4.2L14.4 3h3l-5.4 9.4z" fill="#35495e"/></symbol><symbol id="m-svelte" viewBox="0 0 24 24"><path d="M17 6.2c-2.4-2.3-6.4-2.6-8.8-.6-2.3 1.9-1.8 5 .8 6.2 2.6 1.2 6.4 1 7.5 3.7 1.1 2.6-1.3 5.3-4.3 5.6-2.6.3-4.9-.6-6.3-2.3" fill="none" stroke="#e97d30" stroke-width="3.2" stroke-linecap="round"/></symbol></defs>
+<rect width="100%" height="100%" fill="#fbfbfd"/>
+<text x="410.0" y="38" text-anchor="middle" fill="#1f2328" font-size="22" font-weight="bold">Coi vs React vs Vue vs Svelte</text>
+<text x="410.0" y="57" text-anchor="middle" fill="#6b7280" font-size="12">Chrome 156.0.0.0 · 2026-10-24</text>
+<use href="#m-coi" x="220.0" y="70.0" width="25.6" height="16"/>
+<text x="252.0" y="83" fill="#1f2328" font-size="13" font-weight="600">Coi</text>
+<use href="#m-react" x="320.0" y="70.0" width="25.6" height="16"/>
+<text x="352.0" y="83" fill="#1f2328" font-size="13" font-weight="600">React</text>
+<use href="#m-vue" x="420.0" y="70.0" width="25.6" height="16"/>
+<text x="452.0" y="83" fill="#1f2328" font-size="13" font-weight="600">Vue</text>
+<use href="#m-svelte" x="520.0" y="70.0" width="25.6" height="16"/>
+<text x="552.0" y="83" fill="#1f2328" font-size="13" font-weight="600">Svelte</text>
+<text x="410.0" y="128" text-anchor="middle" fill="#1f2328" font-size="16" font-weight="bold">Bundle size</text>
+<text x="410.0" y="146" text-anchor="middle" fill="#6b7280" font-size="12">Counter app, everything served · smaller is better</text>
+<use href="#m-coi" x="62.0" y="174.0" width="28.8" height="18"/>
+<text x="176" y="188" text-anchor="end" fill="#1f2328" font-size="13" font-weight="600">Coi</text>
+<rect x="190" y="170" width="67.0" height="26" fill="#9477ff" rx="4"/>
+<text x="267.0" y="188" fill="#1f2328" font-size="13" font-weight="bold">23.8 KB ★</text>
+<use href="#m-svelte" x="62.0" y="210.0" width="28.8" height="18"/>
+<text x="176" y="224" text-anchor="end" fill="#1f2328" font-size="13" font-weight="600">Svelte</text>
+<rect x="190" y="206" width="79.5" height="26" fill="#e97d30" rx="4"/>
+<text x="279.5" y="224" fill="#1f2328" font-size="13" font-weight="normal">28.2 KB</text>
+<text x="332.3" y="224" fill="#6b7280" font-size="12">+19%</text>
+<use href="#m-vue" x="62.0" y="246.0" width="28.8" height="18"/>
+<text x="176" y="260" text-anchor="end" fill="#1f2328" font-size="13" font-weight="600">Vue</text>
+<rect x="190" y="242" width="173.4" height="26" fill="#42b883" rx="4"/>
+<text x="373.4" y="260" fill="#1f2328" font-size="13" font-weight="normal">61.6 KB</text>
+<text x="426.2" y="260" fill="#6b7280" font-size="12">+159%</text>
+<use href="#m-react" x="62.0" y="282.0" width="28.8" height="18"/>
+<text x="176" y="296" text-anchor="end" fill="#1f2328" font-size="13" font-weight="600">React</text>
+<rect x="190" y="278" width="400.0" height="26" fill="#00d8ff" rx="4"/>
+<text x="600.0" y="296" fill="#1f2328" font-size="13" font-weight="normal">142.0 KB</text>
+<text x="660.3" y="296" fill="#6b7280" font-size="12">+497%</text>
+<text x="410.0" y="338" text-anchor="middle" fill="#1f2328" font-size="16" font-weight="bold">DOM performance</text>
+<text x="410.0" y="356" text-anchor="middle" fill="#6b7280" font-size="12">Rows app, 1,000 rows, median of 15 · lower is better</text>
+<text x="62" y="384" fill="#1f2328" font-size="12" font-weight="bold">Create 1,000 rows</text>
+<use href="#m-vue" x="62.0" y="396.0" width="22.4" height="14"/>
+<text x="90" y="407" fill="#6b7280" font-size="11">Vue</text>
+<rect x="190" y="394" width="363.6" height="18" fill="#42b883" rx="3"/>
+<text x="561.6" y="407" fill="#1f2328" font-size="11" font-weight="bold">21.0 ms ★</text>
+<use href="#m-coi" x="62.0" y="418.0" width="22.4" height="14"/>
+<text x="90" y="429" fill="#6b7280" font-size="11">Coi</text>
+<rect x="190" y="416" width="371.0" height="18" fill="#9477ff" rx="3"/>
+<text x="569.0" y="429" fill="#1f2328" font-size="11" font-weight="normal">21.5 ms</text>
+<use href="#m-react" x="62.0" y="440.0" width="22.4" height="14"/>
+<text x="90" y="451" fill="#6b7280" font-size="11">React</text>
+<rect x="190" y="438" width="375.8" height="18" fill="#00d8ff" rx="3"/>
+<text x="573.8" y="451" fill="#1f2328" font-size="11" font-weight="normal">21.7 ms</text>
+<text x="618.5" y="451" fill="#6b7280" font-size="10">+3%</text>
+<use href="#m-svelte" x="62.0" y="462.0" width="22.4" height="14"/>
+<text x="90" y="473" fill="#6b7280" font-size="11">Svelte</text>
+<rect x="190" y="460" width="394.3" height="18" fill="#e97d30" rx="3"/>
+<text x="592.3" y="473" fill="#1f2328" font-size="11" font-weight="normal">22.8 ms</text>
+<text x="637.0" y="473" fill="#6b7280" font-size="10">+8%</text>
+<text x="62" y="512" fill="#1f2328" font-size="12" font-weight="bold">Update 1,000 rows</text>
+<use href="#m-coi" x="62.0" y="524.0" width="22.4" height="14"/>
+<text x="90" y="535" fill="#6b7280" font-size="11">Coi</text>
+<rect x="190" y="522" width="165.2" height="18" fill="#9477ff" rx="3"/>
+<text x="363.2" y="535" fill="#1f2328" font-size="11" font-weight="bold">9.6 ms ★</text>
+<use href="#m-svelte" x="62.0" y="546.0" width="22.4" height="14"/>
+<text x="90" y="557" fill="#6b7280" font-size="11">Svelte</text>
+<rect x="190" y="544" width="177.3" height="18" fill="#e97d30" rx="3"/>
+<text x="375.3" y="557" fill="#1f2328" font-size="11" font-weight="normal">10.3 ms</text>
+<text x="420.0" y="557" fill="#6b7280" font-size="10">+7%</text>
+<use href="#m-react" x="62.0" y="568.0" width="22.4" height="14"/>
+<text x="90" y="579" fill="#6b7280" font-size="11">React</text>
+<rect x="190" y="566" width="188.3" height="18" fill="#00d8ff" rx="3"/>
+<text x="386.3" y="579" fill="#1f2328" font-size="11" font-weight="normal">10.9 ms</text>
+<text x="430.9" y="579" fill="#6b7280" font-size="10">+14%</text>
+<use href="#m-vue" x="62.0" y="590.0" width="22.4" height="14"/>
+<text x="90" y="601" fill="#6b7280" font-size="11">Vue</text>
+<rect x="190" y="588" width="228.8" height="18" fill="#42b883" rx="3"/>
+<text x="426.8" y="601" fill="#1f2328" font-size="11" font-weight="normal">13.2 ms</text>
+<text x="471.4" y="601" fill="#6b7280" font-size="10">+38%</text>
+<text x="62" y="640" fill="#1f2328" font-size="12" font-weight="bold">Swap rows</text>
+<use href="#m-coi" x="62.0" y="652.0" width="22.4" height="14"/>
+<text x="90" y="663" fill="#6b7280" font-size="11">Coi</text>
+<rect x="190" y="650" width="38.8" height="18" fill="#9477ff" rx="3"/>
+<text x="236.8" y="663" fill="#1f2328" font-size="11" font-weight="bold">2.2 ms ★</text>
+<use href="#m-svelte" x="62.0" y="674.0" width="22.4" height="14"/>
+<text x="90" y="685" fill="#6b7280" font-size="11">Svelte</text>
+<rect x="190" y="672" width="53.6" height="18" fill="#e97d30" rx="3"/>
+<text x="251.6" y="685" fill="#1f2328" font-size="11" font-weight="normal">3.1 ms</text>
+<text x="289.9" y="685" fill="#6b7280" font-size="10">+38%</text>
+<use href="#m-vue" x="62.0" y="696.0" width="22.4" height="14"/>
+<text x="90" y="707" fill="#6b7280" font-size="11">Vue</text>
+<rect x="190" y="694" width="73.5" height="18" fill="#42b883" rx="3"/>
+<text x="271.5" y="707" fill="#1f2328" font-size="11" font-weight="normal">4.3 ms</text>
+<text x="309.8" y="707" fill="#6b7280" font-size="10">+90%</text>
+<use href="#m-react" x="62.0" y="718.0" width="22.4" height="14"/>
+<text x="90" y="729" fill="#6b7280" font-size="11">React</text>
+<rect x="190" y="716" width="400.0" height="18" fill="#00d8ff" rx="3"/>
+<text x="598.0" y="729" fill="#1f2328" font-size="11" font-weight="normal">23.1 ms</text>
+<text x="642.7" y="729" fill="#6b7280" font-size="10">+932%</text>
+<text x="62" y="768" fill="#1f2328" font-size="12" font-weight="bold">Clear rows</text>
+<use href="#m-coi" x="62.0" y="780.0" width="22.4" height="14"/>
+<text x="90" y="791" fill="#6b7280" font-size="11">Coi</text>
+<rect x="190" y="778" width="5.0" height="18" fill="#9477ff" rx="3"/>
+<text x="203.0" y="791" fill="#1f2328" font-size="11" font-weight="bold">0.3 ms ★</text>
+<use href="#m-react" x="62.0" y="802.0" width="22.4" height="14"/>
+<text x="90" y="813" fill="#6b7280" font-size="11">React</text>
+<rect x="190" y="800" width="5.6" height="18" fill="#00d8ff" rx="3"/>
+<text x="203.6" y="813" fill="#1f2328" font-size="11" font-weight="bold">0.3 ms ★</text>
+<use href="#m-svelte" x="62.0" y="824.0" width="22.4" height="14"/>
+<text x="90" y="835" fill="#6b7280" font-size="11">Svelte</text>
+<rect x="190" y="822" width="5.0" height="18" fill="#e97d30" rx="3"/>
+<text x="203.0" y="835" fill="#1f2328" font-size="11" font-weight="bold">0.3 ms ★</text>
+<use href="#m-vue" x="62.0" y="846.0" width="22.4" height="14"/>
+<text x="90" y="857" fill="#6b7280" font-size="11">Vue</text>
+<rect x="190" y="844" width="4.5" height="18" fill="#42b883" rx="3"/>
+<text x="202.5" y="857" fill="#1f2328" font-size="11" font-weight="bold">0.3 ms ★</text>
+<text x="410.0" y="898" text-anchor="middle" fill="#1f2328" font-size="14" font-weight="bold">Coi against the best of the others</text>
+<text x="110" y="924" text-anchor="start" fill="#6b7280" font-size="11" font-weight="bold">Metric</text>
+<text x="330" y="924" text-anchor="end" fill="#9477ff" font-size="11" font-weight="bold">Coi</text>
+<text x="520" y="924" text-anchor="end" fill="#6b7280" font-size="11" font-weight="bold">Best other</text>
+<text x="710" y="924" text-anchor="end" fill="#6b7280" font-size="11" font-weight="bold">Difference</text>
+<line x1="110" y1="932" x2="710" y2="932" stroke="#e5e7eb"/>
+<text x="110" y="948" fill="#1f2328" font-size="11">Bundle size</text>
+<text x="330" y="948" text-anchor="end" fill="#1f2328" font-size="11" font-weight="bold">23.8 KB</text>
+<text x="520" y="948" text-anchor="end" fill="#6b7280" font-size="11">28.2 KB (Svelte)</text>
+<text x="710" y="948" text-anchor="end" fill="#16a34a" font-size="11" font-weight="bold">-16% (4.4 KB less)</text>
+<text x="110" y="966" fill="#1f2328" font-size="11">Create 1,000 rows</text>
+<text x="330" y="966" text-anchor="end" fill="#1f2328" font-size="11" font-weight="normal">21.5 ms</text>
+<text x="520" y="966" text-anchor="end" fill="#6b7280" font-size="11">21.0 ms (Vue)</text>
+<text x="710" y="966" text-anchor="end" fill="#6b7280" font-size="11" font-weight="bold">same</text>
+<text x="110" y="984" fill="#1f2328" font-size="11">Update 1,000 rows</text>
+<text x="330" y="984" text-anchor="end" fill="#1f2328" font-size="11" font-weight="bold">9.6 ms</text>
+<text x="520" y="984" text-anchor="end" fill="#6b7280" font-size="11">10.3 ms (Svelte)</text>
+<text x="710" y="984" text-anchor="end" fill="#16a34a" font-size="11" font-weight="bold">-7% (0.7 ms less)</text>
+<text x="110" y="1002" fill="#1f2328" font-size="11">Swap rows</text>
+<text x="330" y="1002" text-anchor="end" fill="#1f2328" font-size="11" font-weight="bold">2.2 ms</text>
+<text x="520" y="1002" text-anchor="end" fill="#6b7280" font-size="11">3.1 ms (Svelte)</text>
+<text x="710" y="1002" text-anchor="end" fill="#16a34a" font-size="11" font-weight="bold">-28% (0.9 ms less)</text>
+<text x="110" y="1020" fill="#1f2328" font-size="11">Clear rows</text>
+<text x="330" y="1020" text-anchor="end" fill="#1f2328" font-size="11" font-weight="bold">0.3 ms</text>
+<text x="520" y="1020" text-anchor="end" fill="#6b7280" font-size="11">0.3 ms (React)</text>
+<text x="710" y="1020" text-anchor="end" fill="#6b7280" font-size="11" font-weight="bold">same</text>
 </svg>
