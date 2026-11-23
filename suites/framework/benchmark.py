@@ -13,6 +13,7 @@ import subprocess
 import sys
 import asyncio
 import statistics
+import socket
 
 # Check for playwright (only needed for DOM benchmarks)
 PLAYWRIGHT_AVAILABLE = False
@@ -202,11 +203,19 @@ def summarize(samples: dict) -> dict:
     return out
 
 
+# a port nothing listens on, on 127.0.0.1: a dev server of something else on 5173 (often [::1]
+# only, which "localhost" reaches first) would be what the browser opens otherwise
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(('127.0.0.1', 0))
+        return s.getsockname()[1]
+
+
 async def benchmark_framework_dom(browser, framework: str, port: int) -> dict:
     """One cycle of the DOM benchmarks for a framework: {label: [durations]}."""
     results = {}
     page = await browser.new_page()
-    await page.goto(f'http://localhost:{port}')
+    await page.goto(f'http://127.0.0.1:{port}')
     await page.wait_for_selector('.controls')
     
     # Wait 2 seconds for page to fully load and stabilize
@@ -251,9 +260,8 @@ async def run_dom_benchmarks() -> tuple:
     
     # Start servers
     print("\n  Starting servers...")
-    base_port = 5173
-    for i, fw in enumerate(FRAMEWORKS):
-        port = base_port + i
+    for fw in FRAMEWORKS:
+        port = free_port()
         fw_dir = os.path.join(APPS_DIR, 'rows', fw, 'dist')
         
         if not os.path.exists(fw_dir):
@@ -261,7 +269,7 @@ async def run_dom_benchmarks() -> tuple:
             continue
         
         process = subprocess.Popen(
-            [sys.executable, '-m', 'http.server', str(port)],
+            [sys.executable, '-m', 'http.server', str(port), '--bind', '127.0.0.1'],
             cwd=fw_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
@@ -294,7 +302,7 @@ async def run_dom_benchmarks() -> tuple:
                 try:
                     if browser_name == "Unknown Browser":
                         page = await browser.new_page()
-                        await page.goto(f'http://localhost:{port}')
+                        await page.goto(f'http://127.0.0.1:{port}')
                         browser_name = parse_browser(await page.evaluate('navigator.userAgent'))
                         print(f"  Browser: {browser_name}")
                         await page.close()
